@@ -39,9 +39,9 @@ end
 
 function genGaussPoints(order)
     numPoints = order + 1
-    evalPts = pi * collect(range(0,1,numPoints))
-    gaussPoints = cos.(evalPts)
-    return reverse(gaussPoints)
+    evalPts = [pi * range(0,1,numPoints);]
+    gaussPoints = reverse(cos.(evalPts))
+    return gaussPoints
 end
 
 function genLagrange(gaussPoints::Vector{Float64})
@@ -63,11 +63,13 @@ function firstDerivativesMat(dbasisFuncsdx::Vector{Polynomial{Float64, :x}}, gau
     n = length(dbasisFuncsdx)[1]
     out = Array{Float64}(undef, (n,n))
 
-    for i=1:n
-        deriv = dbasisFuncsdx[i]
-        evalD = deriv.(gaussPoints)
-        out[:,i] = evalD
-    end
+    # for i=1:n
+    #     deriv = dbasisFuncsdx[i]
+    #     evalD = deriv.(gaussPoints)
+    #     out[:,i] = evalD
+    # end
+
+    foreach(i -> out[:,i] = dbasisFuncsdx[i].(gaussPoints), 1:n |> Array)
 
     return out
 end
@@ -91,7 +93,7 @@ function doTransform(gaussPoints, a::Float64, b::Float64)
 
     intlength = b - a
     intlengtho = bo - ao
-    newCoords = a .+ (gaussPoints .- ao) .* intlength ./ intlengtho
+    newCoords = @. a + (gaussPoints - ao) * intlength / intlengtho
 
     return newCoords
 end
@@ -111,7 +113,7 @@ function makeMesh(numElem, order, start::Float64, endpoint::Float64, elemSizes::
     for i=0:numElem-1
         elemSize = elemSizes[i+1]
         idxStart = order * i + 1
-        nodeIdxs = collect(idxStart:idxStart+order)
+        nodeIdxs = idxStart:idxStart+order |> Array
         elems[i+1] = Element1D(currPos, currPos+elemSize, nodeIdxs)
 
         gaussPointsTransformed = doTransform(gaussPoints, currPos, currPos+elemSize)
